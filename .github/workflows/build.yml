@@ -1,0 +1,42 @@
+name: Build APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            .buildozer
+            ~/.buildozer
+            ~/.cache/pip
+          key: buildozer-cache-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-cache-
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y aidl python3-pip build-essential git zip unzip openjdk-17-jdk libffi-dev libssl-dev zlib1g-dev libltdl-dev libncurses5-dev libncursesw5-dev libsqlite3-dev
+          pip3 install --upgrade buildozer "cython<3.0" virtualenv
+
+      - name: Build with Buildozer
+        run: |
+          export PATH=$PATH:~/.local/bin
+          yes | buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: bin/*.apk
