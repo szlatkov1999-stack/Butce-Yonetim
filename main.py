@@ -1,8 +1,8 @@
 from kivy.config import Config
 Config.set("kivy", "keyboard_mode", "system")
 
-import json, os
-from datetime import datetime
+import json, os, calendar
+from datetime import datetime, date
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -11,10 +11,11 @@ from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 from kivy.core.window import Window
 from kivy.graphics import Color, RoundedRectangle
 
-# --- PAKET TAKİP TASARIM RENKLERİ ---
+# --- TASARIM RENKLERİ ---
 BG   = (0.05, 0.07, 0.12, 1)
 CARD = (0.11, 0.14, 0.21, 1)
 CHI  = (0.16, 0.20, 0.29, 1)
@@ -66,7 +67,7 @@ class Buton(Button):
         self.background_color = (0, 0, 0, 0)
         self.color = tc
         self.bold = True
-        self.font_size = '16sp'
+        self.font_size = '15sp'
         with self.canvas.before:
             self._c = Color(*bg)
             self._rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[r])
@@ -102,7 +103,7 @@ class ButceApp(App):
         self.root = BoxLayout(orientation='vertical', padding=[14, 14, 14, 10], spacing=10)
 
         # --- ÜST BAKİYE KARTI ---
-        self.ust = Kart(r=26, orientation='vertical', size_hint_y=0.25, padding=[15, 15, 15, 15], spacing=2)
+        self.ust = Kart(r=26, orientation='vertical', size_hint_y=0.22, padding=[15, 10, 15, 10], spacing=2)
         self.ust.add_widget(Label(text='TOPLAM BAKİYE', font_size='13sp', color=MUT, bold=True, size_hint_y=0.2))
         self.bakiye_label = Label(text='0.00 TL', font_size='45sp', bold=True, color=YEL, size_hint_y=0.6)
         self.ust.add_widget(self.bakiye_label)
@@ -113,14 +114,19 @@ class ButceApp(App):
         self.ic = BoxLayout(orientation='vertical', spacing=10)
         self.root.add_widget(self.ic)
 
-        # --- ALT MENÜ ---
-        a = BoxLayout(size_hint_y=0.1, spacing=8)
-        self.b_ekle = Buton(text='EKLE', bg=PUR, r=22)
-        self.b_liste = Buton(text='LİSTE', bg=CARD, tc=MUT, r=22)
+        # --- ALT MENÜ (3 SEKME) ---
+        a = BoxLayout(size_hint_y=0.1, spacing=6)
+        self.b_ekle = Buton(text='EKLE', bg=PUR, r=22, font_size='14sp')
+        self.b_liste = Buton(text='LİSTE', bg=CARD, tc=MUT, r=22, font_size='14sp')
+        self.b_takvim = Buton(text='TAKVİM', bg=CARD, tc=MUT, r=22, font_size='14sp')
+        
         self.b_ekle.bind(on_press=lambda x: self.sp())
         self.b_liste.bind(on_press=lambda x: self.sl())
+        self.b_takvim.bind(on_press=lambda x: self.st())
+        
         a.add_widget(self.b_ekle)
         a.add_widget(self.b_liste)
+        a.add_widget(self.b_takvim)
         self.root.add_widget(a)
 
         self.guncelle()
@@ -139,32 +145,32 @@ class ButceApp(App):
     def rs(self, ak):
         self.b_ekle.renk(CARD, MUT)
         self.b_liste.renk(CARD, MUT)
+        self.b_takvim.renk(CARD, MUT)
         if ak == 'e': self.b_ekle.renk(PUR, TXT)
         elif ak == 'l': self.b_liste.renk(CYN, DRK)
+        elif ak == 't': self.b_takvim.renk(GRN, DRK)
 
     def tz(self):
         self.ic.clear_widgets()
 
+    # --- SEKME 1: EKLE ---
     def sp(self):
         self.rs('e')
         self.tz()
         self.ic.add_widget(Label(text='YENİ İŞLEM EKLE', font_size='18sp', bold=True, color=TXT, size_hint_y=0.06))
         
-        # Tür Seçimi
         k1 = Kart(r=20, orientation='horizontal', size_hint_y=0.15, padding=[15, 10, 15, 10], spacing=10)
         k1.add_widget(Label(text='Tür', font_size='15sp', color=MUT, size_hint_x=0.3, bold=True))
         self.spinner_tur = Spinner(text='Gider', values=('Gelir', 'Gider'), background_normal='', background_color=CHI, color=TXT, font_size='18sp')
         k1.add_widget(self.spinner_tur)
         self.ic.add_widget(k1)
 
-        # Tutar
         k2 = Kart(r=20, orientation='horizontal', size_hint_y=0.15, padding=[15, 10, 15, 10], spacing=10)
         k2.add_widget(Label(text='Tutar', font_size='15sp', color=MUT, size_hint_x=0.3, bold=True))
         self.inp_tutar = In(input_type='number', hint_text='0.00')
         k2.add_widget(self.inp_tutar)
         self.ic.add_widget(k2)
 
-        # Kategori
         k3 = Kart(r=20, orientation='horizontal', size_hint_y=0.15, padding=[15, 10, 15, 10], spacing=10)
         k3.add_widget(Label(text='Kategori', font_size='15sp', color=MUT, size_hint_x=0.3, bold=True))
         self.spinner_kat = Spinner(text='Market', values=('Market', 'Kira', 'Fatura', 'Maaş', 'Ek Gelir', 'Diğer'), background_normal='', background_color=CHI, color=TXT, font_size='18sp')
@@ -191,7 +197,7 @@ class ButceApp(App):
             "tur": self.spinner_tur.text,
             "tutar": tutar,
             "kategori": self.spinner_kat.text,
-            "tarih": datetime.now().strftime("%d-%m-%Y %H:%M")
+            "tarih": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
         islemler.append(islem)
         kaydet(islemler)
@@ -200,6 +206,7 @@ class ButceApp(App):
         self.mesaj.color = GRN
         self.inp_tutar.text = ''
 
+    # --- SEKME 2: LİSTE ---
     def sl(self):
         self.rs('l')
         self.tz()
@@ -239,7 +246,67 @@ class ButceApp(App):
             del islemler[idx]
             kaydet(islemler)
             self.guncelle()
-            self.sl() # Listeyi yenile
+            self.sl()
+
+    # --- SEKME 3: TAKVİM ---
+    def st(self):
+        self.rs('t')
+        self.tz()
+        
+        b = date.today()
+        y = b.year
+        mo = b.month
+        AYLAR = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+        
+        self.ic.add_widget(Label(text='%s %d' % (AYLAR[mo], y), font_size='22sp', bold=True, color=TXT, size_hint_y=0.06))
+        
+        # Günlük bakiye hesaplama
+        gunluk_bakiye = {}
+        for islem in islemler:
+            gun = islem['tarih'][:10] # YYYY-MM-DD
+            if islem['tur'] == 'Gelir':
+                gunluk_bakiye[gun] = gunluk_bakiye.get(gun, 0) + islem['tutar']
+            else:
+                gunluk_bakiye[gun] = gunluk_bakiye.get(gun, 0) - islem['tutar']
+                
+        kart = Kart(r=20, padding=[8, 10, 8, 10], size_hint_y=0.85)
+        g = GridLayout(cols=7, spacing=4)
+        
+        for x in ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pa']:
+            g.add_widget(Label(text=x, bold=True, font_size='12sp', color=MUT))
+            
+        c = calendar.Calendar(firstweekday=0)
+        for hf in c.monthdayscalendar(y, mo):
+            for gn in hf:
+                if gn == 0:
+                    g.add_widget(Widget())
+                else:
+                    gs = '%04d-%02d-%02d' % (y, mo, gn)
+                    deger = gunluk_bakiye.get(gs, None)
+                    
+                    if deger is None:
+                        rn = CHI
+                        yt = MUT
+                        al = '-'
+                    elif deger > 0:
+                        rn = GRN
+                        yt = DRK
+                        al = '+%.0f' % deger
+                    elif deger < 0:
+                        rn = RED
+                        yt = TXT
+                        al = '%.0f' % deger
+                    else:
+                        rn = YEL
+                        yt = DRK
+                        al = '0'
+                        
+                    h = Kart(r=12, bg=rn, orientation='vertical', padding=[2, 4, 2, 4], spacing=0)
+                    h.add_widget(Label(text=str(gn), font_size='14sp', bold=True, color=yt))
+                    h.add_widget(Label(text=al, font_size='10sp', color=yt))
+                    g.add_widget(h)
+        kart.add_widget(g)
+        self.ic.add_widget(kart)
 
 if __name__ == '__main__':
     ButceApp().run()
